@@ -6,7 +6,7 @@ $ScriptBlock =
 						$PoolCount = Get-PhysicalDisk -CanPool $True
 						$DiskCount = $PoolCount.count
 						$PhysicalDisks = Get-StorageSubSystem -FriendlyName "Storage Spaces*" | Get-PhysicalDisk -CanPool $True
-						New-StoragePool -FriendlyName "DataPool" -StorageSubsystemFriendlyName "Storage Spaces*" -PhysicalDisks $PhysicalDisks |New-VirtualDisk -FriendlyName "Virtual Data Disk 01" -Interleave 65536 -NumberOfColumns $DiskCount -ResiliencySettingName simple ñUseMaximumSize |Initialize-Disk -PartitionStyle GPT -PassThru |New-Partition -AssignDriveLetter -UseMaximumSize |Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data Volume" -AllocationUnitSize 65536 -Confirm:$false
+						New-StoragePool -FriendlyName "DataPool" -StorageSubsystemFriendlyName "Storage Spaces*" -PhysicalDisks $PhysicalDisks |New-VirtualDisk -FriendlyName "Virtual Data Disk 01" -Interleave 65536 -NumberOfColumns $DiskCount -ResiliencySettingName simple ‚ÄìUseMaximumSize |Initialize-Disk -PartitionStyle GPT -PassThru |New-Partition -AssignDriveLetter -UseMaximumSize |Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data Volume" -AllocationUnitSize 65536 -Confirm:$false
 						}
 Invoke-Command -ScriptBlock $ScriptBlock | out-null
 
@@ -27,8 +27,8 @@ Import-Module WebAdministration -ErrorAction SilentlyContinue
 
 ##Create root directory if it does not exist
 md $PhysicalPath -ErrorAction SilentlyContinue
-icacls "$PhysicalPath" /grant IUSRí:(OI)(CI)(R)í /T
-icacls "$PhysicalPath" /grant IUSRí:(OI)(CI)(W)í /T
+icacls "$PhysicalPath" /grant IUSR':(OI)(CI)(R)' /T
+icacls "$PhysicalPath" /grant IUSR':(OI)(CI)(W)' /T
 
 ##    CREATE FTP SITE AND SET C:\inetpub\ftproot AS HOME DIRECTORY
 New-WebFtpSite -Name $ftpsitename -Force -PhysicalPath $PhysicalPath -Port 21
@@ -45,7 +45,7 @@ $Computer = $env:COMPUTERNAME
 $ADSI = [ADSI]("WinNT://$Computer")
 $Group = $ADSI.Create('Group', "$ftpusergroup")
 $Group.SetInfo()
-$Group.description = ìftp user groupî
+$Group.description = ‚Äúftp user group‚Äù
 $group.SetInfo()
 
 ## FTP Allow user and group access
