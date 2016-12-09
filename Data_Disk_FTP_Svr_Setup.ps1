@@ -27,8 +27,8 @@ Import-Module WebAdministration -ErrorAction SilentlyContinue
 
 ##Create root directory if it does not exist
 md $PhysicalPath -ErrorAction SilentlyContinue
-icacls "$PhysicalPath" /grant IUSR':(OI)(CI)(R)' /T
-icacls "$PhysicalPath" /grant IUSR':(OI)(CI)(W)' /T
+icacls "$PhysicalPath" /grant IUSR’:(OI)(CI)(R)’ /T
+icacls "$PhysicalPath" /grant IUSR’:(OI)(CI)(W)’ /T
 
 ##    CREATE FTP SITE AND SET C:\inetpub\ftproot AS HOME DIRECTORY
 New-WebFtpSite -Name $ftpsitename -Force -PhysicalPath $PhysicalPath -Port 21
