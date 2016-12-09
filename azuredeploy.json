@@ -1,0 +1,752 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "myadmin",
+      "metadata": {
+        "description": "Virtual machine administrator username"
+      }
+    },
+    "virtualMachines_adminPassword": {
+      "type": "SecureString"
+    },
+    "availabilitySets_myAvSet_name": {
+      "defaultValue": "myAvSet",
+      "type": "String"
+    },
+    "virtualMachines_name": {
+      "defaultValue": "ftpsvr",
+      "type": "String"
+    },
+    "loadBalancers_name": {
+      "defaultValue": "ftpLB",
+      "type": "String"
+    },
+    "networkInterfaces_ftpnic0_name": {
+      "defaultValue": "ftpnic0",
+      "type": "String"
+    },
+    "publicIPAddresses_name": {
+      "defaultValue": "ftpPublicIP",
+      "type": "String"
+    },
+    "virtualNetworks_ftpVNET_name": {
+      "defaultValue": "ftpVNET",
+      "type": "String"
+    },
+    "SubscriptionID": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "AzureResourceGroup": {
+      "defaultValue": "ftp-group",
+      "type": "String"
+    },
+    "LoadBName": {
+      "defaultValue": "ftpLB",
+      "type": "String"
+    },
+    "dnsNameforLBIP": {
+      "defaultValue": "dnftp",
+      "type": "String"
+    },
+    "storageAccountNamePostFix": {
+      "defaultValue": "ftpstorage",
+      "type": "String"
+    }
+  },
+  "variables": {
+    "templateBaseUrl": "https://github.com/dirkslab/azure-standalone-iisftp",
+    "loadBalancers_id": "[concat('/subscriptions/',parameters('SubscriptionID'),'/resourceGroups/',parameters('AzureResourceGroup'),'/providers/Microsoft.Network/loadBalancers/',parameters('LoadBName'),'/frontendIPConfigurations/LoadBalancerFrontend')]",
+    "storageAccountNameUnique": "[concat(uniqueString(resourceGroup().id), parameters('storageAccountNamePostFix'))]",
+    "vmScripts": {
+      "scriptsToDownload": [
+        "[concat(variables('templateBaseUrl'), 'mongodb-repl-setup.sh')]"
+      ],
+      "commandToExecute": "bash mongodb-repl-setup.sh"
+    },
+    "Data_Disk_FTP_Svr_SetupScriptUri": "[concat(variables('templateBaseUrl'), 'Data_Disk_FTP_Svr_Setup.ps1')]",
+    "Data_Disk_FTP_Svr_SetupScriptFileName": "Data_Disk_FTP_Svr_Setup.ps1"
+  },
+    "resources": [
+      {
+        "comments": "Azure FTP AVSet",
+        "type": "Microsoft.Compute/availabilitySets",
+        "name": "[parameters('availabilitySets_myAvSet_name')]",
+        "apiVersion": "2015-06-15",
+        "location": "northeurope",
+        "tags": {
+          "displayName": "AvailabilitySets"
+        },
+        "properties": {
+          "platformUpdateDomainCount": 5,
+          "platformFaultDomainCount": 3
+        },
+        "resources": [ ],
+        "dependsOn": [ ]
+      },
+      {
+        "comments": "FTP AzureVM",
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[parameters('virtualMachines_name')]",
+        "apiVersion": "2015-06-15",
+        "location": "northeurope",
+        "tags": { },
+        "properties": {
+          "availabilitySet": {
+            "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_myAvSet_name'))]"
+          },
+          "hardwareProfile": {
+            "vmSize": "Standard_A1"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "MicrosoftWindowsServer",
+              "offer": "WindowsServer",
+              "sku": "2012-R2-Datacenter",
+              "version": "latest"
+            },
+            "osDisk": {
+              "name": "osdisk",
+              "createOption": "FromImage",
+              "vhd": {
+                "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/osdisk', parameters('virtualMachines_name'),'.vhd'))]"
+              },
+              "caching": "ReadWrite"
+            },
+            "dataDisks": [
+              {
+                "lun": 1,
+                "name": "[concat(parameters('virtualMachines_name'),'-Data1')]",
+                "createOption": "Empty",
+                "vhd": {
+                  "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/', parameters('virtualMachines_name'),'-DataDisk1.vhd'))]"
+                },
+                "caching": "None",
+                "diskSizeGB": 1000
+              },
+              {
+                "lun": 2,
+                "name": "[concat(parameters('virtualMachines_name'),'-Data2')]",
+                "createOption": "Empty",
+                "vhd": {
+                  "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/', parameters('virtualMachines_name'),'-DataDisk2.vhd'))]"
+                },
+                "caching": "None",
+                "diskSizeGB": 1000
+              }
+            ]
+          },
+          "osProfile": {
+            "computerName": "[parameters('virtualMachines_name')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "windowsConfiguration": {
+              "provisionVMAgent": true,
+              "enableAutomaticUpdates": true
+            },
+            "secrets": [ ],
+            "adminPassword": "[parameters('virtualMachines_adminPassword')]"
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_ftpnic0_name'))]"
+              }
+            ]
+          }
+        },
+        "resources": [
+          {
+            "name": "Data_Disk_FTP_Svr_Setup",
+            "type": "extensions",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-06-15",
+            "dependsOn": [
+              "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachines_name'))]"
+            ],
+            "tags": {
+              "displayName": "Data_Disk_FTP_Svr_Setup"
+            },
+            "properties": {
+              "publisher": "Microsoft.Compute",
+              "type": "CustomScriptExtension",
+              "typeHandlerVersion": "1.4",
+              "autoUpgradeMinorVersion": true,
+              "settings": {
+                "fileUris": [
+                  "[variables('Data_Disk_FTP_Svr_SetupScriptUri')]"
+                ],
+                "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('Data_Disk_FTP_Svr_SetupScriptFileName'))]"
+              }
+            }
+          }
+        ],
+        "dependsOn": [
+          "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_myAvSet_name'))]",
+          "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountNameUnique'))]",
+          "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_ftpnic0_name'))]"
+        ]
+      },
+      {
+        "comments": "Azure FTP LoadBalancer",
+        "type": "Microsoft.Network/loadBalancers",
+        "name": "[parameters('loadBalancers_name')]",
+        "apiVersion": "2016-03-30",
+        "location": "northeurope",
+        "tags": {
+          "displayName": "LoadBalancer"
+        },
+        "properties": {
+          "frontendIPConfigurations": [
+            {
+              "name": "LoadBalancerFrontend",
+              "properties": {
+                "privateIPAllocationMethod": "Dynamic",
+                "publicIPAddress": {
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_name'))]"
+                }
+              }
+            }
+          ],
+          "backendAddressPools": [
+            {
+              "name": "LoadBalancerBackend"
+            }
+          ],
+          "loadBalancingRules": [ ],
+          "probes": [ ],
+          "inboundNatRules": [
+            {
+              "name": "WinRM",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 5986,
+                "backendPort": 5986,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_04",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60004,
+                "backendPort": 60004,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_06",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60006,
+                "backendPort": 60006,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_03",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60003,
+                "backendPort": 60003,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_02",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60002,
+                "backendPort": 60002,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "RDP-VM",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 5666,
+                "backendPort": 3389,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTPS",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 990,
+                "backendPort": 990,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_05",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60005,
+                "backendPort": 60005,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_21",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 21,
+                "backendPort": 21,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_07",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60007,
+                "backendPort": 60007,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_08",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60008,
+                "backendPort": 60008,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_09",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60009,
+                "backendPort": 60009,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_10",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60010,
+                "backendPort": 60010,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_011",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60011,
+                "backendPort": 60011,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_00",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60000,
+                "backendPort": 60000,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_01",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60001,
+                "backendPort": 60001,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_012",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60012,
+                "backendPort": 60012,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_013",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60013,
+                "backendPort": 60013,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_14",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60014,
+                "backendPort": 60014,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_015",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60015,
+                "backendPort": 60015,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_16",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60016,
+                "backendPort": 60016,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_17",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60017,
+                "backendPort": 60017,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_18",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60018,
+                "backendPort": 60018,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_19",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60019,
+                "backendPort": 60019,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_020",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60020,
+                "backendPort": 60020,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_021",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60021,
+                "backendPort": 60021,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_022",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60022,
+                "backendPort": 60022,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_023",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60023,
+                "backendPort": 60023,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_024",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60024,
+                "backendPort": 60024,
+                "protocol": "Tcp"
+              }
+            },
+            {
+              "name": "FTP_PASV_025",
+              "properties": {
+                "frontendIPConfiguration": {
+                  "id": "[variables('loadBalancers_id')]"
+                },
+                "frontendPort": 60025,
+                "backendPort": 60025,
+                "protocol": "Tcp"
+              }
+            }
+          ],
+          "outboundNatRules": [ ],
+          "inboundNatPools": [ ]
+        },
+        "resources": [ ],
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_name'))]"
+        ]
+      },
+      {
+        "comments": "Azure FTP Nic",
+        "type": "Microsoft.Network/networkInterfaces",
+        "name": "[parameters('networkInterfaces_ftpnic0_name')]",
+        "apiVersion": "2016-03-30",
+        "location": "northeurope",
+        "tags": {
+          "displayName": "Nics"
+        },
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAddress": "10.0.5.4",
+                "privateIPAllocationMethod": "Dynamic",
+                "subnet": {
+                  "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_ftpVNET_name')), '/subnets/Subnet-1')]"
+                },
+                "loadBalancerBackendAddressPools": [
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/backendAddressPools/LoadBalancerBackend')]"
+                  }
+                ],
+                "loadBalancerInboundNatRules": [
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/RDP-VM')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_21')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_00')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_01')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_02')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_03')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_04')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_05')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_06')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTPS')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_07')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_08')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_10')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_09')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_011')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_012')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_013')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_14')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_015')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_16')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_17')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_18')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_19')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_020')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_021')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_022')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_023')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_024')]"
+                  },
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_025')]"
+                  }
+                ]
+              }
+            }
+          ],
+          "dnsSettings": {
+            "dnsServers": [ ]
+          },
+          "enableIPForwarding": false
+        },
+        "resources": [ ],
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_ftpVNET_name'))]",
+          "[resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name'))]"
+        ]
+      },
+      {
+        "comments": "Azure FTP PublicIP",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "name": "[parameters('publicIPAddresses_name')]",
+        "apiVersion": "2016-03-30",
+        "location": "northeurope",
+        "tags": {
+          "displayName": "PublicIpAddress"
+        },
+        "properties": {
+          "publicIPAllocationMethod": "Dynamic",
+          "idleTimeoutInMinutes": 4,
+          "dnsSettings": {
+            "domainNameLabel": "[parameters('dnsNameforLBIP')]"
+          }
+        },
+        "resources": [ ],
+        "dependsOn": [ ]
+      },
+      {
+        "comments": "Azure FTP vnet",
+        "type": "Microsoft.Network/virtualNetworks",
+        "name": "[parameters('virtualNetworks_ftpVNET_name')]",
+        "apiVersion": "2016-03-30",
+        "location": "northeurope",
+        "tags": {
+          "displayName": "VNet"
+        },
+        "properties": {
+          "addressSpace": {
+            "addressPrefixes": [
+              "10.0.5.0/16"
+            ]
+          },
+          "subnets": [
+            {
+              "name": "Subnet-1",
+              "properties": {
+                "addressPrefix": "10.0.5.0/24"
+              }
+            }
+          ]
+        },
+        "resources": [ ],
+        "dependsOn": [ ]
+      },
+      {
+        "comments": "Azure FTP Storage Account",
+        "type": "Microsoft.Storage/storageAccounts",
+        "sku": {
+          "name": "Standard_LRS",
+          "tier": "Standard"
+        },
+        "kind": "Storage",
+        "name": "[variables('storageAccountNameUnique')]",
+        "apiVersion": "2016-01-01",
+        "location": "northeurope",
+        "tags": {
+          "displayName": "StorageAccount"
+        },
+        "properties": { },
+        "resources": [ ],
+        "dependsOn": [ ]
+      }
+    ]
+  }

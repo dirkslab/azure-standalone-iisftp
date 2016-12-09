@@ -1,0 +1,45 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "adminUsername": {
+      "value": "myadmin"
+    },
+    "availabilitySets_myAvSet_name": {
+      "value": "myftpavset"
+    },
+    "virtualMachines_name": {
+      "value": "myftpsvr"
+    },
+    "loadBalancers_name": {
+      "value": "myftplb"
+    },
+    "networkInterfaces_ftpnic0_name": {
+      "value": "myftpnic0"
+    },
+    "publicIPAddresses_name": {
+      "value": "myprptestftp01"
+    },
+    "virtualNetworks_ftpVNET_name": {
+      "value": "myftpvnet"
+    },
+    "storageAccountNamePostFix": {
+      "value": "ftpstorage"
+    },
+    "SubscriptionID": {
+      "value": "b3fd3ab8-8f06-469a-acbf-dbeb39acf8ab"
+    },
+    "AzureResourceGroup": {
+      "value": "anewtest2-AzureResourceGroupFTP"
+    },
+    "LoadBName": {
+      "value": "myftpLB"
+    },
+    "dnsNameforLBIP": {
+      "value": "pspftppp",
+      "metadata": {
+        "description": "Unique DNS name"
+      }
+    }
+  }
+}
