@@ -9,30 +9,30 @@
         "description": "Virtual machine administrator username"
       }
     },
-    "virtualMachines_prp_ftp_svr_01_adminPassword": {
+    "virtualMachines_adminPassword": {
       "type": "SecureString"
     },
     "availabilitySets_myAvSet_name": {
       "defaultValue": "myAvSet",
       "type": "String"
     },
-    "virtualMachines_prp_ftp_svr_01_name": {
+    "virtualMachines_name": {
       "defaultValue": "ftpsvr",
       "type": "String"
     },
-    "loadBalancers_prpftpLB_name": {
+    "loadBalancers_name": {
       "defaultValue": "ftpLB",
       "type": "String"
     },
-    "networkInterfaces_prpftpnic0_name": {
+    "networkInterfaces_ftpnic0_name": {
       "defaultValue": "ftpnic0",
       "type": "String"
     },
-    "publicIPAddresses_prpftpPublicIP_name": {
+    "publicIPAddresses_name": {
       "defaultValue": "ftpPublicIP",
       "type": "String"
     },
-    "virtualNetworks_prpftpVNET_name": {
+    "virtualNetworks_ftpVNET_name": {
       "defaultValue": "ftpVNET",
       "type": "String"
     },
@@ -55,24 +55,13 @@
     "storageAccountNamePostFix": {
       "defaultValue": "ftpstorage",
       "type": "String"
-    },
-    "_artifactsLocation": {
-      "type": "string",
-      "metadata": {
-        "description": "Auto-generated container in staging storage account to receive post-build staging folder upload"
-      }
-    },
-    "_artifactsLocationSasToken": {
-      "type": "securestring",
-      "metadata": {
-        "description": "Auto-generated token to access _artifactsLocation"
-      }
     }
   },
   "variables": {
+    "templateBaseUrl": "https://raw.githubusercontent.com/dirkslab/azure-standalone-iisftp/master/",
     "loadBalancers_id": "[concat('/subscriptions/',parameters('SubscriptionID'),'/resourceGroups/',parameters('AzureResourceGroup'),'/providers/Microsoft.Network/loadBalancers/',parameters('LoadBName'),'/frontendIPConfigurations/LoadBalancerFrontend')]",
     "storageAccountNameUnique": "[concat(uniqueString(resourceGroup().id), parameters('storageAccountNamePostFix'))]",
-    "Data_Disk_FTP_Svr_SetupScriptFolder": "CustomScripts",
+    "Data_Disk_FTP_Svr_SetupScriptUri": "[concat(variables('templateBaseUrl'), 'Data_Disk_FTP_Svr_Setup.ps1')]",
     "Data_Disk_FTP_Svr_SetupScriptFileName": "Data_Disk_FTP_Svr_Setup.ps1"
   },
     "resources": [
@@ -95,7 +84,7 @@
       {
         "comments": "FTP AzureVM",
         "type": "Microsoft.Compute/virtualMachines",
-        "name": "[parameters('virtualMachines_prp_ftp_svr_01_name')]",
+        "name": "[parameters('virtualMachines_name')]",
         "apiVersion": "2015-06-15",
         "location": "northeurope",
         "tags": { },
@@ -117,27 +106,27 @@
               "name": "osdisk",
               "createOption": "FromImage",
               "vhd": {
-                "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/osdisk', parameters('virtualMachines_prp_ftp_svr_01_name'),'.vhd'))]"
+                "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/osdisk', parameters('virtualMachines_name'),'.vhd'))]"
               },
               "caching": "ReadWrite"
             },
             "dataDisks": [
               {
                 "lun": 1,
-                "name": "[concat(parameters('virtualMachines_prp_ftp_svr_01_name'),'-Data1')]",
+                "name": "[concat(parameters('virtualMachines_name'),'-Data1')]",
                 "createOption": "Empty",
                 "vhd": {
-                  "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/', parameters('virtualMachines_prp_ftp_svr_01_name'),'-DataDisk1.vhd'))]"
+                  "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/', parameters('virtualMachines_name'),'-DataDisk1.vhd'))]"
                 },
                 "caching": "None",
                 "diskSizeGB": 1000
               },
               {
                 "lun": 2,
-                "name": "[concat(parameters('virtualMachines_prp_ftp_svr_01_name'),'-Data2')]",
+                "name": "[concat(parameters('virtualMachines_name'),'-Data2')]",
                 "createOption": "Empty",
                 "vhd": {
-                  "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/', parameters('virtualMachines_prp_ftp_svr_01_name'),'-DataDisk2.vhd'))]"
+                  "uri": "[concat('http', '://', variables('storageAccountNameUnique'), '.blob.core.windows.net', concat('/vhds/', parameters('virtualMachines_name'),'-DataDisk2.vhd'))]"
                 },
                 "caching": "None",
                 "diskSizeGB": 1000
@@ -145,19 +134,19 @@
             ]
           },
           "osProfile": {
-            "computerName": "[parameters('virtualMachines_prp_ftp_svr_01_name')]",
+            "computerName": "[parameters('virtualMachines_name')]",
             "adminUsername": "[parameters('adminUsername')]",
             "windowsConfiguration": {
               "provisionVMAgent": true,
               "enableAutomaticUpdates": true
             },
             "secrets": [ ],
-            "adminPassword": "[parameters('virtualMachines_prp_ftp_svr_01_adminPassword')]"
+            "adminPassword": "[parameters('virtualMachines_adminPassword')]"
           },
           "networkProfile": {
             "networkInterfaces": [
               {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_prpftpnic0_name'))]"
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_ftpnic0_name'))]"
               }
             ]
           }
@@ -166,10 +155,10 @@
           {
             "name": "Data_Disk_FTP_Svr_Setup",
             "type": "extensions",
-            "location": "northeurope",
+            "location": "[resourceGroup().location]",
             "apiVersion": "2015-06-15",
             "dependsOn": [
-              "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachines_prp_ftp_svr_01_name'))]"
+              "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachines_name'))]"
             ],
             "tags": {
               "displayName": "Data_Disk_FTP_Svr_Setup"
@@ -181,9 +170,9 @@
               "autoUpgradeMinorVersion": true,
               "settings": {
                 "fileUris": [
-                  "[concat(parameters('_artifactsLocation'), '/', variables('Data_Disk_FTP_Svr_SetupScriptFolder'), '/', variables('Data_Disk_FTP_Svr_SetupScriptFileName'), parameters('_artifactsLocationSasToken'))]"
+                  "[variables('Data_Disk_FTP_Svr_SetupScriptUri')]"
                 ],
-                "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('Data_Disk_FTP_Svr_SetupScriptFolder'), '/', variables('Data_Disk_FTP_Svr_SetupScriptFileName'))]"
+                "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('Data_Disk_FTP_Svr_SetupScriptFileName'))]"
               }
             }
           }
@@ -191,13 +180,13 @@
         "dependsOn": [
           "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySets_myAvSet_name'))]",
           "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountNameUnique'))]",
-          "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_prpftpnic0_name'))]"
+          "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaces_ftpnic0_name'))]"
         ]
       },
       {
         "comments": "Azure FTP LoadBalancer",
         "type": "Microsoft.Network/loadBalancers",
-        "name": "[parameters('loadBalancers_prpftpLB_name')]",
+        "name": "[parameters('loadBalancers_name')]",
         "apiVersion": "2016-03-30",
         "location": "northeurope",
         "tags": {
@@ -210,7 +199,7 @@
               "properties": {
                 "privateIPAllocationMethod": "Dynamic",
                 "publicIPAddress": {
-                  "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_prpftpPublicIP_name'))]"
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_name'))]"
                 }
               }
             }
@@ -559,13 +548,13 @@
         },
         "resources": [ ],
         "dependsOn": [
-          "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_prpftpPublicIP_name'))]"
+          "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_name'))]"
         ]
       },
       {
         "comments": "Azure FTP Nic",
         "type": "Microsoft.Network/networkInterfaces",
-        "name": "[parameters('networkInterfaces_prpftpnic0_name')]",
+        "name": "[parameters('networkInterfaces_ftpnic0_name')]",
         "apiVersion": "2016-03-30",
         "location": "northeurope",
         "tags": {
@@ -579,100 +568,100 @@
                 "privateIPAddress": "10.0.5.4",
                 "privateIPAllocationMethod": "Dynamic",
                 "subnet": {
-                  "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_prpftpVNET_name')), '/subnets/Subnet-1')]"
+                  "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_ftpVNET_name')), '/subnets/Subnet-1')]"
                 },
                 "loadBalancerBackendAddressPools": [
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/backendAddressPools/LoadBalancerBackend')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/backendAddressPools/LoadBalancerBackend')]"
                   }
                 ],
                 "loadBalancerInboundNatRules": [
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/RDP-VM')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/RDP-VM')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_21')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_21')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_00')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_00')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_01')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_01')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_02')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_02')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_03')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_03')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_04')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_04')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_05')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_05')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_06')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_06')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTPS')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTPS')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_07')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_07')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_08')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_08')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_10')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_10')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_09')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_09')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_011')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_011')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_012')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_012')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_013')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_013')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_14')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_14')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_015')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_015')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_16')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_16')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_17')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_17')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_18')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_18')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_19')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_19')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_020')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_020')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_021')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_021')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_022')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_022')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_023')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_023')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_024')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_024')]"
                   },
                   {
-                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name')), '/inboundNatRules/FTP_PASV_025')]"
+                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name')), '/inboundNatRules/FTP_PASV_025')]"
                   }
                 ]
               }
@@ -685,14 +674,14 @@
         },
         "resources": [ ],
         "dependsOn": [
-          "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_prpftpVNET_name'))]",
-          "[resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_prpftpLB_name'))]"
+          "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_ftpVNET_name'))]",
+          "[resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_name'))]"
         ]
       },
       {
         "comments": "Azure FTP PublicIP",
         "type": "Microsoft.Network/publicIPAddresses",
-        "name": "[parameters('publicIPAddresses_prpftpPublicIP_name')]",
+        "name": "[parameters('publicIPAddresses_name')]",
         "apiVersion": "2016-03-30",
         "location": "northeurope",
         "tags": {
@@ -711,7 +700,7 @@
       {
         "comments": "Azure FTP vnet",
         "type": "Microsoft.Network/virtualNetworks",
-        "name": "[parameters('virtualNetworks_prpftpVNET_name')]",
+        "name": "[parameters('virtualNetworks_ftpVNET_name')]",
         "apiVersion": "2016-03-30",
         "location": "northeurope",
         "tags": {

@@ -30,7 +30,7 @@
       "value": "b3fd3ab8-8f06-469a-acbf-dbeb39acf8ab"
     },
     "AzureResourceGroup": {
-      "value": "anewtest2-AzureResourceGroupFTP"
+      "value": "aa-AzureResourceGroupIIS-FTP"
     },
     "LoadBName": {
       "value": "myftpLB"
