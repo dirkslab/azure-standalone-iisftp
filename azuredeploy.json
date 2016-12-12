@@ -59,7 +59,7 @@
   },
   "variables": {
     "templateBaseUrl": "https://raw.githubusercontent.com/dirkslab/azure-standalone-iisftp/master/",
-    "loadBalancers_id": "[concat('/subscriptions/',parameters('SubscriptionID'),'/resourceGroups/',parameters('AzureResourceGroup'),'/providers/Microsoft.Network/loadBalancers/',parameters('LoadBName'),'/frontendIPConfigurations/LoadBalancerFrontend')]",
+    "loadBalancers_id": "[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',toLower(resourceGroup().name),'/providers/Microsoft.Network/loadBalancers/',parameters('LoadBName'),'/frontendIPConfigurations/LoadBalancerFrontend')]",
     "storageAccountNameUnique": "[concat(uniqueString(resourceGroup().id), parameters('storageAccountNamePostFix'))]",
     "Data_Disk_FTP_Svr_SetupScriptUri": "[concat(variables('templateBaseUrl'), 'Data_Disk_FTP_Svr_Setup.ps1')]",
     "Data_Disk_FTP_Svr_SetupScriptFileName": "Data_Disk_FTP_Svr_Setup.ps1"

@@ -1,14 +1,12 @@
 <# Custom Script for Windows #>
 
 # Prep Data Disks
-$ScriptBlock = 
-						{
-						$PoolCount = Get-PhysicalDisk -CanPool $True
-						$DiskCount = $PoolCount.count
-						$PhysicalDisks = Get-StorageSubSystem -FriendlyName "Storage Spaces*" | Get-PhysicalDisk -CanPool $True
-						New-StoragePool -FriendlyName "DataPool" -StorageSubsystemFriendlyName "Storage Spaces*" -PhysicalDisks $PhysicalDisks |New-VirtualDisk -FriendlyName "Virtual Data Disk 01" -Interleave 65536 -NumberOfColumns $DiskCount -ResiliencySettingName simple –UseMaximumSize |Initialize-Disk -PartitionStyle GPT -PassThru |New-Partition -AssignDriveLetter -UseMaximumSize |Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data Volume" -AllocationUnitSize 65536 -Confirm:$false
-						}
-Invoke-Command -ScriptBlock $ScriptBlock | out-null
+
+$PoolCount = Get-PhysicalDisk -CanPool $True
+$DiskCount = $PoolCount.count
+$PhysicalDisks = Get-StorageSubSystem -FriendlyName "Storage Spaces*" | Get-PhysicalDisk -CanPool $True
+New-StoragePool -FriendlyName "DataPool" -StorageSubsystemFriendlyName "Storage Spaces*" -PhysicalDisks $PhysicalDisks |New-VirtualDisk -FriendlyName "Virtual Data Disk 01" -Interleave 65536 -NumberOfColumns $DiskCount -ResiliencySettingName simple –UseMaximumSize |Initialize-Disk -PartitionStyle GPT -PassThru |New-Partition -AssignDriveLetter -UseMaximumSize |Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data Volume" -AllocationUnitSize 65536 -Confirm:$false
+
 
 # Setup FTP Server
 $ftpsitename = "ftpmedia"
@@ -60,6 +58,6 @@ Set-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessT
 
 ## configure inbound firewall rule for passive connections
 New-NetFirewallRule -DisplayName "ftp passive ports" -Action Allow -Direction Inbound -InterfaceType Any -Service ftpsvc
-Set-NetFirewallSetting -EnableStatefulFtp $false
+Set-NetFirewallSetting -EnableStatefulFtp false
 
-Restart-WebItem "IIS:\sites\ftpmedia"
+Restart-WebItem 'IIS:\sites\ftpmedia'
