@@ -13,7 +13,8 @@ $ftpsitename = "ftpmedia"
 $PhysicalPath = "f:\ftproot"
 $ftpusergroup = "ftpusergroup"
 #$domainNameLabel = "pspftp" ##this would be the domainNameLabel used when setting up PublicIpAddress
-$ftpsvradmin = "myadmin" ##must be the same as FTP server admin name you will be specifying during deploy
+$ftpsvradmin = "ftpadmin"
+$UserPassword = "Thereshegoes@81" ##remember to change this password! Not sure if this is a good idea?
 #$ip=[System.Net.Dns]::GetHostAddresses("$domainNameLabel.northeurope.cloudapp.azure.com")| Select-Object -ExpandProperty IPAddressToString
 
 ## Install webserver and web management tools
@@ -37,6 +38,15 @@ Set-ItemProperty "IIS:\Sites\$ftpsitename" -Name ftpServer.security.authenticati
 
 Set-ItemProperty "IIS:\Sites\$ftpsitename" -Name ftpServer.security.ssl.controlChannelPolicy -Value 0
 Set-ItemProperty "IIS:\Sites\$ftpsitename" -Name ftpServer.security.ssl.dataChannelPolicy -Value 0
+
+## Create FTP Admin User
+$Computer = $env:COMPUTERNAME
+$ADSI = [ADSI]("WinNT://$Computer")
+$User = $ADSI.Create('User', "$ftpsvradmin")
+$User.SetPassword($UserPassword)
+$User.SetInfo()
+$User.description = “ftp Admin User”
+$User.SetInfo()
 
 ## Create FTP access Group
 $Computer = $env:COMPUTERNAME
