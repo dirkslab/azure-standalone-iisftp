@@ -36,10 +36,6 @@
       "defaultValue": "ftpVNET",
       "type": "String"
     },
-    "SubscriptionID": {
-      "defaultValue": "",
-      "type": "String"
-    },
     "AzureResourceGroup": {
       "defaultValue": "ftp-group",
       "type": "String"

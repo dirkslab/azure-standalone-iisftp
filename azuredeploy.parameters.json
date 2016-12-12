@@ -26,12 +26,6 @@
     "storageAccountNamePostFix": {
       "value": "ftpstorage"
     },
-    "SubscriptionID": {
-      "value": "b3fd3ab8"
-    },
-    "AzureResourceGroup": {
-      "value": "aa-AzureResourceGroupIIS-FTP"
-    },
     "LoadBName": {
       "value": "myftpLB"
     },
