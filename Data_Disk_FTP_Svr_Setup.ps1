@@ -27,9 +27,14 @@ Import-Module WebAdministration -ErrorAction SilentlyContinue;
 
 ##Create root directory if it does not exist
 md $PhysicalPath -ErrorAction SilentlyContinue;
+$acl = Get-ACL -Path $PhysicalPath;
+$acl.SetAccessRuleProtection($True, $True);
+Set-Acl -Path $PhysicalPath -AclObject $acl;
 icacls "$PhysicalPath" "/grant" "IUSR:(OI)(CI)(R)" "/T";
 icacls "$PhysicalPath" "/grant" "IUSR:(OI)(CI)(W)" "/T";
-
+icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(W)" "/T";
+icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(R)" "/T";
+icacls "$PhysicalPath" "/remove:g" "Users" "/T";
 ##    CREATE FTP SITE AND SET C:\inetpub\ftproot AS HOME DIRECTORY
 New-WebFtpSite -Name $ftpsitename -Force -PhysicalPath $PhysicalPath -Port 21;
 
@@ -70,7 +75,7 @@ Set-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessT
 
 ## configure inbound firewall rule for passive connections
 New-NetFirewallRule -DisplayName "ftp_passive_ports" -Action Allow -Direction Inbound -InterfaceType Any -Service ftpsvc;
-Set-NetFirewallSetting -EnableStatefulFtp false
+Set-NetFirewallSetting -EnableStatefulFtp false;
 
 ## restart IIS site
 Restart-WebItem 'IIS:\sites\ftpmedia'
