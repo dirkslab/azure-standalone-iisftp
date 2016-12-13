@@ -25,6 +25,23 @@ Install-WindowsFeature -Name Web-Server, Web-FTP-Server, Web-Mgmt-Tools -ErrorAc
 ## NEEDED FOR IIS CMDLETS
 Import-Module WebAdministration -ErrorAction SilentlyContinue;
 
+## Create FTP Admin User
+$Computer = $env:COMPUTERNAME;
+$ADSI = [ADSI]("WinNT://$Computer");
+$User = $ADSI.Create('User', "$ftpsvradmin");
+$User.SetPassword($UserPassword);
+$User.SetInfo();
+$User.description = "ftp_Admin_User";
+$User.SetInfo();
+
+## Create FTP access Group
+$Computer = $env:COMPUTERNAME;
+$ADSI = [ADSI]("WinNT://$Computer");
+$Group = $ADSI.Create('Group', "$ftpusergroup");
+$Group.SetInfo();
+$Group.description = "ftp_user_group";
+$group.SetInfo()
+
 ##Create root directory if it does not exist
 md $PhysicalPath -ErrorAction SilentlyContinue;
 $acl = Get-ACL -Path $PhysicalPath;
@@ -45,23 +62,6 @@ Set-ItemProperty "IIS:\Sites\$ftpsitename" -Name 'ftpServer.security.authenticat
 Set-ItemProperty "IIS:\Sites\$ftpsitename" -Name 'ftpServer.security.ssl.controlChannelPolicy' -Value 0;
 Set-ItemProperty "IIS:\Sites\$ftpsitename" -Name 'ftpServer.security.ssl.dataChannelPolicy' -Value 0
 
-
-## Create FTP Admin User
-$Computer = $env:COMPUTERNAME;
-$ADSI = [ADSI]("WinNT://$Computer");
-$User = $ADSI.Create('User', "$ftpsvradmin");
-$User.SetPassword($UserPassword);
-$User.SetInfo();
-$User.description = "ftp_Admin_User";
-$User.SetInfo();
-
-## Create FTP access Group
-$Computer = $env:COMPUTERNAME;
-$ADSI = [ADSI]("WinNT://$Computer");
-$Group = $ADSI.Create('Group', "$ftpusergroup");
-$Group.SetInfo();
-$Group.description = "ftp_user_group";
-$group.SetInfo()
 
 ## FTP Allow user and group access
 Set-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";users="$ftpsvradmin";roles="$ftpusergroup";permissions='Read, Write'} -PSPath "iis:\" -location "ftpmedia";
