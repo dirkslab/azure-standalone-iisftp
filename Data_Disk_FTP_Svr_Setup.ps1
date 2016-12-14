@@ -1,6 +1,6 @@
 ﻿<# Custom Script for Windows #>
 
-# Prep Data Disks
+### Prep Data Disks
 
 $PoolCount = Get-PhysicalDisk -CanPool $True;
 $DiskCount = $PoolCount.count;
@@ -8,8 +8,8 @@ $PhysicalDisks = Get-StorageSubSystem -FriendlyName "Storage Spaces*" | Get-Phys
 New-StoragePool -FriendlyName "DataPool" -StorageSubsystemFriendlyName "Storage Spaces*" -PhysicalDisks $PhysicalDisks |New-VirtualDisk -FriendlyName "Virtual Data Disk 01" -Interleave 65536 -NumberOfColumns $DiskCount -ResiliencySettingName simple –UseMaximumSize |Initialize-Disk -PartitionStyle GPT -PassThru |New-Partition -AssignDriveLetter -UseMaximumSize |Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data Volume" -AllocationUnitSize 65536 -Confirm:$false;
 
 
+### Setup FTP Server
 
-# Setup FTP Server
 $ftpsitename = "ftpmedia"
 $PhysicalPath = "f:\ftproot"
 $ftpusergroup = "ftpusergroup"
@@ -17,13 +17,6 @@ $ftpusergroup = "ftpusergroup"
 $ftpsvradmin = "ftpadmin"
 $UserPassword = "Thereshegoes@81" ##remember to change this password! Not sure if this is a good idea?
 #$ip=[System.Net.Dns]::GetHostAddresses("$domainNameLabel.northeurope.cloudapp.azure.com")| Select-Object -ExpandProperty IPAddressToString
-
-## Install webserver and web management tools
-Install-WindowsFeature -Name Web-Server, Web-FTP-Server, Web-Mgmt-Tools -ErrorAction SilentlyContinue;
-
-
-## NEEDED FOR IIS CMDLETS
-Import-Module WebAdministration -ErrorAction SilentlyContinue;
 
 ## Create FTP Admin User
 $Computer = $env:COMPUTERNAME;
@@ -42,17 +35,28 @@ $Group.SetInfo();
 $Group.description = "ftp_user_group";
 $group.SetInfo()
 
-##Create root directory if it does not exist
+## Install webserver and web management tools
+Install-WindowsFeature -Name Web-Server, Web-FTP-Server, Web-Mgmt-Tools -ErrorAction SilentlyContinue;
+
+## needed for iis cmdlets
+Import-Module WebAdministration -ErrorAction SilentlyContinue;
+
+## Create root directory if it does not exist
 md $PhysicalPath -ErrorAction SilentlyContinue;
+
+## Stop and copy inheritance on new ftp root folder
 $acl = Get-ACL -Path $PhysicalPath;
 $acl.SetAccessRuleProtection($True, $True);
 Set-Acl -Path $PhysicalPath -AclObject $acl;
+
+## Set permission on new ftp root folder
 icacls "$PhysicalPath" "/grant" "IUSR:(OI)(CI)(R)" "/T";
 icacls "$PhysicalPath" "/grant" "IUSR:(OI)(CI)(W)" "/T";
 icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(W)" "/T";
 icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(R)" "/T";
 icacls "$PhysicalPath" "/remove:g" "Users" "/T";
-##    CREATE FTP SITE AND SET C:\inetpub\ftproot AS HOME DIRECTORY
+
+## create ftp site $PhysicalPath as home directory
 New-WebFtpSite -Name $ftpsitename -Force -PhysicalPath $PhysicalPath -Port 21;
 
 ## set authentication on FTP server
