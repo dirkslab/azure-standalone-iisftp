@@ -54,6 +54,8 @@ icacls "$PhysicalPath" "/grant" "IUSR:(OI)(CI)(R)" "/T";
 icacls "$PhysicalPath" "/grant" "IUSR:(OI)(CI)(W)" "/T";
 icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(W)" "/T";
 icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(R)" "/T";
+icacls "$PhysicalPath" "/grant" "$ftpsvradmin`:(OI)(CI)(W)" "/T";
+icacls "$PhysicalPath" "/grant" "$ftpsvradmin`:(OI)(CI)(R)" "/T";
 icacls "$PhysicalPath" "/remove:g" "Users" "/T";
 
 ## create ftp site $PhysicalPath as home directory
