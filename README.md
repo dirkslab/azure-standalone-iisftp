@@ -1,5 +1,7 @@
-# azure-standalone-iisftp
-Standalone azure iisftp server.
+# azure-standalone-iisftp ARM Template
+
+Standalone azure iisftp server. Using Azure Resource Manager.
+
 Unsecure with no ssl setup.
 No user isolation.
 One loacation for users to upload data, images or whatever the requirement might be.
