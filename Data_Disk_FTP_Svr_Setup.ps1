@@ -52,10 +52,8 @@ Set-Acl -Path $PhysicalPath -AclObject $acl;
 ## Set permission on new ftp root folder
 icacls "$PhysicalPath" "/grant" "IUSR:(OI)(CI)(R)" "/T";
 icacls "$PhysicalPath" "/grant" "IUSR:(OI)(CI)(W)" "/T";
-icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(W)" "/T";
-icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(R)" "/T";
-icacls "$PhysicalPath" "/grant" "$ftpsvradmin`:(OI)(CI)(W)" "/T";
-icacls "$PhysicalPath" "/grant" "$ftpsvradmin`:(OI)(CI)(R)" "/T";
+icacls "$PhysicalPath" "/grant" "$ftpusergroup`:(OI)(CI)(M)" "/T";
+icacls "$PhysicalPath" "/grant" "$ftpsvradmin`:(OI)(CI)(M)" "/T";
 icacls "$PhysicalPath" "/remove:g" "Users" "/T";
 
 ## create ftp site $PhysicalPath as home directory
@@ -85,3 +83,6 @@ Set-NetFirewallSetting -EnableStatefulFtp false;
 
 ## restart IIS site
 Restart-WebItem 'IIS:\sites\ftpmedia'
+
+## reset IIS
+iisreset
