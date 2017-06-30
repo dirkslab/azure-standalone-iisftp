@@ -91,9 +91,11 @@ iisreset
 ####TEAMCITY####
 ################
 
-Set-ExecutionPolicy AllSigned
+Set-ExecutionPolicy bypass -Force
 iwr https://chocolatey.org/install.ps1 -UseBasicParsing | iex
 
-choco install server-jre8
+#enable -n allowGlobalConfirmation
 
-choco install teamcity -params "username=*factory* password=*fakepassword10*"
+choco install server-jre8 -y --force
+
+choco install teamcity -params "username=*factory* password=*fakepassword10*" -y --force
